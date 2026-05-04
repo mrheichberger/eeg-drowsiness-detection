@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EEG-Based Smart Light Demo</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111827;
+      color: white;
+      text-align: center;
+      padding-top: 50px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #d1d5db;
+      margin-bottom: 35px;
+    }
+
+    .light-container {
+      margin: 30px auto;
+      width: 230px;
+      height: 230px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1f2937;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+      transition: all 0.5s ease;
+    }
+
+    .bulb {
+      font-size: 110px;
+      transition: all 0.5s ease;
+    }
+
+    .bright {
+      color: #fff7a8;
+      text-shadow: 0 0 25px #fff176, 0 0 70px #facc15;
+      filter: brightness(1.6);
+    }
+
+    .dim {
+      color: #facc15;
+      text-shadow: 0 0 15px #ca8a04;
+      filter: brightness(0.8);
+    }
+
+    .dark {
+      color: #4b5563;
+      text-shadow: none;
+      filter: brightness(0.25);
+    }
+
+    .status-card {
+      margin: 25px auto;
+      padding: 20px;
+      max-width: 460px;
+      background: #1f2937;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .status {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .details {
+      color: #d1d5db;
+      line-height: 1.7;
+    }
+
+    .brightness-bar {
+      width: 320px;
+      height: 22px;
+      background: #374151;
+      border-radius: 12px;
+      margin: 25px auto 10px auto;
+      overflow: hidden;
+    }
+
+    .brightness-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #4b5563, #facc15, #fff7a8);
+      transition: width 0.5s ease;
+    }
+
+    .connection {
+      margin-top: 25px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>EEG-Based Smart Light Control</h1>
+  <div class="subtitle">Simulated real-time predictions from saved EEG feature windows</div>
+
+  <div class="light-container">
+    <div id="bulb" class="bulb dark">💡</div>
+  </div>
+
+  <div class="status-card">
+    <div id="status" class="status">Classification: Waiting...</div>
+
+    <div class="brightness-bar">
+      <div id="brightnessFill" class="brightness-fill"></div>
+    </div>
+
+    <div id="brightnessText" class="details">Brightness: 0%</div>
+    <div id="labelText" class="details">Predicted label: --</div>
+    <div id="truthText" class="details"></div>
+    <div id="accuracyText" class="details"></div>
+    <div id="sustainText" class="details">Sustained count: 0 / 0</div>
+  </div>
+
+  <div id="connection" class="connection">Connecting to Python server...</div>
+
+  <script>
+    function updateLight(data) {
+      const bulb = document.getElementById("bulb");
+      const status = document.getElementById("status");
+      const brightnessFill = document.getElementById("brightnessFill");
+      const brightnessText = document.getElementById("brightnessText");
+      const labelText = document.getElementById("labelText");
+      const truthText = document.getElementById("truthText");
+      const accuracyText = document.getElementById("accuracyText");
+      const sustainText = document.getElementById("sustainText");
+
+      const label = data.label;
+      const state = data.state;
+      const brightness = data.brightness;
+      const lightLabel = data.light_label;
+
+      let className = "dark";
+      if (lightLabel === 2) className = "bright";
+      else if (lightLabel === 1) className = "dim";
+      else if (lightLabel === 0) className = "dark";
+
+      bulb.className = "bulb " + className;
+
+      status.innerText = "Classification: " + state.toUpperCase();
+      brightnessFill.style.width = brightness + "%";
+      brightnessText.innerText = "Brightness: " + brightness + "%";
+
+      labelText.innerText =
+        "Predicted label: " + label +
+        " (" + state + ")" +
+        " | Window: " + data.index;
+
+      if ("true_label" in data) {
+        truthText.innerText =
+          "True label: " + data.true_label +
+          " (" + data.true_state + ")";
+      }
+
+      if ("running_accuracy" in data) {
+        accuracyText.innerText =
+          "Running accuracy: " +
+          (data.running_accuracy * 100).toFixed(2) +
+          "%";
+      }
+
+      if ("candidate_count" in data) {
+        if (data.candidate_count >= data.required_count) {
+          sustainText.innerText =
+            "Sustained count: " +
+            data.candidate_count +
+            " / " +
+            data.required_count +
+            " ✅";
+        } else {
+          sustainText.innerText =
+            "Sustained count: " +
+            data.candidate_count +
+            " / " +
+            data.required_count;
+        }
+      }
+    }
+
+    const connection = document.getElementById("connection");
+    const socket = new WebSocket("ws://localhost:8765");
+
+    socket.onopen = function () {
+      connection.innerText = "Connected to Python classifier.";
+    };
+
+    socket.onmessage = function (event) {
+      const data = JSON.parse(event.data);
+      updateLight(data);
+    };
+
+    socket.onerror = function () {
+      connection.innerText = "WebSocket error. Make sure realtime_server.py is running.";
+    };
+
+    socket.onclose = function () {
+      connection.innerText = "Disconnected from Python classifier.";
+    };
+  </script>
+</body>
+</html>
