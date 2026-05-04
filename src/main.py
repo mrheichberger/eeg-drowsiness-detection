@@ -18,12 +18,11 @@ from train_eval import run_loso_evaluation, run_time_split_evaluation, save_mode
 
 
 def main():
-    # Change these paths for your local machine or Colab setup.
-    zip_path = "data/EEG_Project_Data.zip"
-    extract_path = "data/EEG_data"
-    model_dir = "models"
+    zip_path = "../data/EEG_Project_Data.zip"
+    extract_path = "../data/EEG_data/EEG_Project_Data (3)"
+    model_dir = "../models"
 
-    # If your data is already extracted, set this to False.
+
     should_extract_zip = False
 
     if should_extract_zip:
